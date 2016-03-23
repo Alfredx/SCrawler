@@ -5,28 +5,56 @@ import cookielib
 import re
 import urllib
 import urllib2
+import threadPool
+from multiprocessing import Pool, Process
+import time
+import os
 
-if __name__ == '__main__':
+def get_zhihu_min_qid(i, *args, **kwargs):
     user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36'
     values = {}
     data = urllib.urlencode(values)
     headers = {
         'User-Agent': user_agent,
         'Referer': 'www.zhihu.com',
-        'Cookie:': 'q_c1=dd84cb409d78477397ecb6854fdc0e61|1458545532000|1458545532000; _xsrf=d8fb380226a9bc36517ce5be1424dc66; _za=3fd841ba-71cc-4bf0-a151-5fffa31ee643; cap_id="ZDYyNDg3MmIwNTA3NDdlYTg1YTUzODc4ODI3MThlYTk=|1458546206|f114e216ae5c8c29681c18d37a44708c808506d3"; __utmt=1; d_c0="ADAA2ugbpgmPTlSYf0ccVP-26FJ8nfRmSfY=|1458546210"; z_c0="QUJDSy1KdVhtZ2dYQUFBQVlRSlZUU1V6RjFkQS1Va01oekx2NTBnUmNSc3ZPT0dOc2N3MFFBPT0=|1458546213|cf7af4aa25311e0b55ef190e8c70dd6265f4abb8"; unlock_ticket="QUJDSy1KdVhtZ2dYQUFBQVlRSlZUUzJ0NzFhT1owWnFubXZBcHo2eDNwZkU1U0lZdnB3WVJ3PT0=|1458546213|ce1504f1fb92a6f7465522b5b1d29dcc03d13144"; n_c=1; __utma=51854390.1308926123.1458545535.1458545535.1458545535.1; __utmb=51854390.11.9.1458546286409; __utmc=51854390; __utmz=51854390.1458545535.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); __utmv=51854390.100-2|2=registration_date=20150826=1^3=entry_date=20150826=1',
+        'Cookie:': '_za=43d95061-7c27-49f5-83d1-e39475d8c69f; q_c1=7d096660be42428f81d2495690cabeab|1456103242000|1445221549000; _xsrf=62052201602318af3d8a5836b3b4fc6e; udid="ADAAwFgDlQmPTp-FsLaaq7ZsGB8_XF_dzu8=|1457502030"; d_c0="AECAB23ioQmPTgK689KjKJHccj1h9L4P-Hs=|1458262705"; cap_id="ZTc0YmU0MWEyM2RhNDU1NWJmOWJmYjU2MGMwYzQyMzg=|1458287762|30d0791d11e737d4f2b277fbafc59d6da0120aca"; z_c0="QUFCQXVzWWNBQUFYQUFBQVlRSlZUWmRCRTFjbDF5YUk1LVpEN0lRRnFMekVFbmtxWjRrcXZnPT0=|1458287767|551c5d728d385cd734144567e781ef42faa15ac9"; __utmt=1; __utma=51854390.985119403.1458694475.1458694475.1458694475.1; __utmb=51854390.8.9.1458696061705; __utmc=51854390; __utmz=51854390.1458631731.1.1.utmcsr=zhihu.com|utmccn=(referral)|utmcmd=referral|utmcct=/collection/78703242; __utmv=51854390.100-1|2=registration_date=20130801=1^3=entry_date=20130801=1',
     }
     url = 'http://zhihu.com/question/'
-    i = 0
     while True:
         i += 1
         try:
-            request = urllib2.Request('%s%d'%(url,(i*5+4)), data, headers)
-            # cookie = cookielib.CookieJar()
-            # handler = urllib2.HTTPCookieProcessor(cookie)
-            # opener = urllib2.build_opener(handler)
+            if i%1000 == 0:
+                print('task_seq %d: current id is %d\n'%(kwargs['task_seq'], i*kwargs['task_total']+kwargs['task_seq']))
+            request = urllib2.Request('%s%d'%(url,(i*kwargs['task_total']+kwargs['task_seq'])), data, headers)
             response = urllib2.urlopen(request)
             plainHTML = response.read().decode('utf-8')
-            print('the first question id is %d'%i)
+            print('the first question id is %d'%(i*kwargs['task_total']+kwargs['task_seq']))
+            f = open('./zhihu_min_qid', 'a')
+            f.write('the first question id is %d\n'%(i*kwargs['task_total']+kwargs['task_seq']))
+            f.flush()
+            f.close()
             break
         except Exception, e:
             continue
+    return False
+
+
+def runThreadTask(i):
+    pool = threadPool.ThreadPool()
+    pool.startTask(get_zhihu_min_qid, workers=50, func_args=(i,))
+    print('%d %s'%(os.getpid(),'all started'))
+    while True:
+        time.sleep(10)
+
+def test(i):
+    f = open('./zhihu_min_qid', 'a')
+    f.writelines('123')
+    f.flush()
+    f.close()
+    print i*i
+
+if __name__ == '__main__':
+    print(os.getpid())
+    pool = Pool(processes=16)
+    pool.map(runThreadTask, range(0, 400000, 25000))
+
