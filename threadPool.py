@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # author: ShenChao
 
-import bson
+import uuid
 from threading import Thread, Lock
 
 
@@ -12,7 +12,7 @@ class Worker(Thread):
     def __init__(self, pool):
         super(Worker, self).__init__()
         self.state = self.STATE_STOP
-        self.id = str(bson.ObjectId())
+        self.id = str(uuid.uuid4())
         self.pool = pool
         self.func = None
         self.loops = 0
